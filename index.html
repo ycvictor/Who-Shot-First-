@@ -24,9 +24,6 @@
                         <canvas id="qr-code"></canvas>
                         <p>Scan with your phone or visit:</p>
                         <div class="join-url" id="join-url"></div>
-                        <div style="margin-top: 20px;">
-                            <button id="demo-join" class="btn-secondary" style="font-size: 0.9rem;">Add Demo Player (for testing)</button>
-                        </div>
                     </div>
                 </div>
                 <div class="players-section">
@@ -67,6 +64,12 @@
         <div id="join-form" class="controller-state active">
             <input type="text" id="player-name" placeholder="Enter your name" maxlength="12">
             <input type="text" id="room-code-input" placeholder="Room code" value="HOTPOT">
+            <div class="motion-toggle">
+                <label>
+                    <input type="checkbox" id="motion-detection" checked>
+                    <span>🤳 Use phone pointing (experimental)</span>
+                </label>
+            </div>
             <button id="join-game" class="btn-primary">Join Game</button>
         </div>
         
@@ -78,6 +81,9 @@
         <div id="controller-active" class="controller-state">
             <div class="pointing-area" id="pointing-area">
                 <div class="instruction" id="game-instruction">Point to another player when you hear "SHOOT"!</div>
+                <div class="motion-status" id="motion-status" style="display: none;">
+                    📱 Hold phone steady, then point when you hear "SHOOT!"
+                </div>
                 <div class="players-to-point" id="players-to-point"></div>
             </div>
         </div>

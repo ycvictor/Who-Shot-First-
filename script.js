@@ -10,6 +10,9 @@ class PointAndShoutGame {
         this.currentPlayerName = '';
         this.audioContext = null;
         this.speechSynthesis = window.speechSynthesis;
+        this.motionDetection = false;
+        this.baseOrientation = null;
+        this.pointingThreshold = 30; // degrees
         
         // Fun words that build suspense
         this.words = [
@@ -173,23 +176,7 @@ class PointAndShoutGame {
             }
         });
         
-        // Demo join button for testing
-        const demoJoinBtn = document.getElementById('demo-join');
-        if (demoJoinBtn) {
-            demoJoinBtn.addEventListener('click', () => {
-                const demoNames = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank'];
-                const availableNames = demoNames.filter(name => 
-                    !this.players.some(p => p.name === name)
-                );
-                
-                if (availableNames.length > 0) {
-                    const randomName = availableNames[Math.floor(Math.random() * availableNames.length)];
-                    this.addPlayer(randomName);
-                } else {
-                    alert('All demo players already added!');
-                }
-            });
-        }
+        // Real players only - no demo functionality
     }
     
     initializeControllerListeners() {
@@ -208,6 +195,95 @@ class PointAndShoutGame {
                 document.getElementById('join-game').click();
             }
         });
+        
+        // Request motion permissions
+        this.requestMotionPermission();
+    }
+    
+    async requestMotionPermission() {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            try {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission === 'granted') {
+                    this.enableMotionDetection();
+                }
+            } catch (error) {
+                console.log('Motion permission denied or not supported');
+            }
+        } else if (window.DeviceOrientationEvent) {
+            // Android or older iOS
+            this.enableMotionDetection();
+        }
+    }
+    
+    enableMotionDetection() {
+        this.motionDetection = true;
+        window.addEventListener('deviceorientation', (event) => {
+            this.handleDeviceOrientation(event);
+        });
+    }
+    
+    handleDeviceOrientation(event) {
+        if (!this.baseOrientation) {
+            // Calibrate base position when game starts
+            this.baseOrientation = {
+                alpha: event.alpha,
+                beta: event.beta,
+                gamma: event.gamma
+            };
+            return;
+        }
+        
+        // Calculate pointing direction based on orientation change
+        const deltaGamma = Math.abs(event.gamma - this.baseOrientation.gamma);
+        const deltaBeta = Math.abs(event.beta - this.baseOrientation.beta);
+        
+        // Check if phone is being pointed (raised and tilted)
+        if (deltaGamma > this.pointingThreshold || deltaBeta > this.pointingThreshold) {
+            this.handlePhonePointing(event);
+        }
+    }
+    
+    handlePhonePointing(event) {
+        // Only detect pointing during "SHOOT" phase
+        if (this.gameState !== 'active' || !this.roundStartTime) return;
+        
+        // Determine pointing direction based on gamma (left/right tilt)
+        const direction = event.gamma > this.baseOrientation.gamma ? 'right' : 'left';
+        
+        // Auto-select target based on direction
+        this.autoSelectTarget(direction);
+    }
+    
+    autoSelectTarget(direction) {
+        const buttons = document.querySelectorAll('.point-button');
+        if (buttons.length === 0) return;
+        
+        // Visual feedback for motion detection
+        const motionStatus = document.getElementById('motion-status');
+        if (motionStatus) {
+            motionStatus.textContent = `📱 Pointing ${direction}!`;
+            motionStatus.className = 'motion-status motion-pointing';
+        }
+        
+        // Simple logic: left = first half of players, right = second half
+        const targetIndex = direction === 'left' ? 
+            Math.floor(buttons.length / 2) - 1 : 
+            Math.floor(buttons.length / 2);
+        
+        const targetButton = buttons[Math.max(0, Math.min(targetIndex, buttons.length - 1))];
+        
+        if (targetButton && !targetButton.classList.contains('selected')) {
+            targetButton.click();
+            
+            // Reset motion status after selection
+            setTimeout(() => {
+                if (motionStatus) {
+                    motionStatus.textContent = '🎯 Target selected!';
+                    motionStatus.className = 'motion-status motion-ready';
+                }
+            }, 1000);
+        }
     }
     
     addPlayer(name) {
@@ -741,6 +817,10 @@ class PointAndShoutGame {
     }
     
     setupPointingInterface() {
+        // Check if motion detection is enabled
+        const motionCheckbox = document.getElementById('motion-detection');
+        const useMotion = motionCheckbox && motionCheckbox.checked;
+        
         // Get other players from the global game instance or use stored players
         const currentPlayerName = document.getElementById('player-name-display').textContent;
         let otherPlayers = [];
@@ -757,11 +837,23 @@ class PointAndShoutGame {
         }
         
         const pointingContainer = document.getElementById('players-to-point');
+        const motionStatus = document.getElementById('motion-status');
+        
         if (otherPlayers.length === 0) {
             pointingContainer.innerHTML = '<div style="padding: 20px; opacity: 0.7;">Waiting for other players...</div>';
             return;
         }
         
+        // Show/hide motion status
+        if (useMotion && this.motionDetection) {
+            motionStatus.style.display = 'block';
+            motionStatus.textContent = '📱 Hold phone steady, then point when you hear "SHOOT!"';
+            motionStatus.className = 'motion-status motion-ready';
+        } else {
+            motionStatus.style.display = 'none';
+        }
+        
+        // Create player buttons (always show for fallback)
         pointingContainer.innerHTML = otherPlayers.map(name => `
             <button class="point-button" data-target="${name}">
                 ${name}
@@ -784,6 +876,29 @@ class PointAndShoutGame {
                 this.sendPointingResponse(target);
             }
         });
+        
+        // Calibrate motion detection when game starts
+        if (useMotion && this.motionDetection) {
+            this.calibrateMotion();
+        }
+    }
+    
+    calibrateMotion() {
+        const motionStatus = document.getElementById('motion-status');
+        if (motionStatus) {
+            motionStatus.textContent = '🔄 Calibrating... Hold phone normally';
+            motionStatus.className = 'motion-status motion-calibrating';
+            
+            // Reset base orientation for calibration
+            this.baseOrientation = null;
+            
+            setTimeout(() => {
+                if (motionStatus) {
+                    motionStatus.textContent = '✅ Ready! Point your phone when you hear "SHOOT!"';
+                    motionStatus.className = 'motion-status motion-ready';
+                }
+            }, 2000);
+        }
     }
     
     sendPointingResponse(target) {

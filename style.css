@@ -636,4 +636,59 @@ R Code and Join Section */
 @keyframes selected-pulse {
     from { box-shadow: 0 0 15px rgba(81,207,102,0.4); }
     to { box-shadow: 0 0 25px rgba(81,207,102,0.6); }
+}/* Mot
+ion Detection Styles */
+.motion-toggle {
+    margin: 15px 0;
+    text-align: center;
+}
+
+.motion-toggle label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.motion-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+
+.motion-status {
+    background: rgba(255,255,255,0.15);
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    font-size: 1rem;
+    border: 2px solid rgba(255,255,255,0.3);
+    animation: motion-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes motion-pulse {
+    from { border-color: rgba(255,255,255,0.3); }
+    to { border-color: rgba(81,207,102,0.5); }
+}
+
+.motion-calibrating {
+    background: rgba(255,193,7,0.3) !important;
+    border-color: #ffc107 !important;
+}
+
+.motion-ready {
+    background: rgba(81,207,102,0.3) !important;
+    border-color: #51cf66 !important;
+}
+
+.motion-pointing {
+    background: rgba(255,107,107,0.4) !important;
+    border-color: #ff6b6b !important;
+    animation: pointing-detected 0.5s ease-in-out;
+}
+
+@keyframes pointing-detected {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
