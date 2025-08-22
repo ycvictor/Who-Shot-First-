@@ -74,6 +74,8 @@ class PointAndShoutGame {
     
     generateQRCode() {
         const canvas = document.getElementById('qr-code');
+        const joinUrlEl = document.getElementById('join-url');
+        
         if (!canvas) {
             console.error('QR code canvas not found');
             return;
@@ -82,18 +84,28 @@ class PointAndShoutGame {
         const baseUrl = window.location.href.split('?')[0];
         const joinUrl = `${baseUrl}?join=true`;
         
-        // Display the URL
-        const joinUrlEl = document.getElementById('join-url');
+        // Always display the URL first
         if (joinUrlEl) {
             joinUrlEl.textContent = joinUrl;
         }
         
-        // Wait for QRCode library to load
+        // Try to generate QR code with multiple attempts
+        let attempts = 0;
+        const maxAttempts = 10;
+        
         const generateQR = () => {
+            attempts++;
+            console.log(`QR generation attempt ${attempts}`);
+            
             if (typeof QRCode !== 'undefined') {
                 try {
+                    // Clear canvas first
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
                     QRCode.toCanvas(canvas, joinUrl, {
                         width: 200,
+                        height: 200,
                         margin: 2,
                         color: {
                             dark: '#000000',
@@ -104,20 +116,32 @@ class PointAndShoutGame {
                             console.error('QR Code generation failed:', error);
                             this.showQRFallback(canvas, joinUrlEl, joinUrl);
                         } else {
-                            console.log('QR Code generated successfully');
+                            console.log('QR Code generated successfully!');
+                            canvas.style.display = 'block';
                         }
                     });
                 } catch (e) {
                     console.error('QR Code generation error:', e);
-                    this.showQRFallback(canvas, joinUrlEl, joinUrl);
+                    if (attempts < maxAttempts) {
+                        setTimeout(generateQR, 1000);
+                    } else {
+                        this.showQRFallback(canvas, joinUrlEl, joinUrl);
+                    }
                 }
             } else {
-                console.error('QRCode library not loaded, retrying...');
-                setTimeout(generateQR, 500);
+                console.log('QRCode library not loaded yet...');
+                if (attempts < maxAttempts) {
+                    setTimeout(generateQR, 1000);
+                } else {
+                    console.error('QRCode library failed to load');
+                    this.showQRFallback(canvas, joinUrlEl, joinUrl);
+                }
             }
         };
         
+        // Start generation immediately and also after a delay
         generateQR();
+        setTimeout(generateQR, 2000);
     }
     
     showQRFallback(canvas, joinUrlEl, joinUrl) {
@@ -159,24 +183,57 @@ class PointAndShoutGame {
         
         // Listen for player join messages (in real app, this would be WebSocket/WebRTC)
         window.addEventListener('message', (event) => {
+            console.log('Received message:', event.data);
             if (event.data.type === 'JOIN_GAME') {
+                console.log(`Adding player via message: ${event.data.playerName}`);
                 this.addPlayer(event.data.playerName);
             }
         });
         
         // Also listen for localStorage changes for same-device testing
         window.addEventListener('storage', (event) => {
+            console.log('Storage event:', event.key, event.newValue);
             if (event.key === 'pointshoot_join') {
-                const joinData = JSON.parse(event.newValue || '{}');
-                if (joinData.playerName && joinData.timestamp > Date.now() - 5000) {
-                    this.addPlayer(joinData.playerName);
-                    // Clear the join request
-                    localStorage.removeItem('pointshoot_join');
+                try {
+                    const joinData = JSON.parse(event.newValue || '{}');
+                    if (joinData.playerName && joinData.timestamp > Date.now() - 10000) {
+                        console.log(`Adding player via storage: ${joinData.playerName}`);
+                        this.addPlayer(joinData.playerName);
+                        // Clear the join request
+                        localStorage.removeItem('pointshoot_join');
+                    }
+                } catch (e) {
+                    console.error('Error parsing join data:', e);
                 }
             }
         });
         
-        // Real players only - no demo functionality
+        // Poll for join requests every 2 seconds (fallback method)
+        setInterval(() => {
+            try {
+                const joinRequest = localStorage.getItem('pointshoot_join');
+                if (joinRequest) {
+                    const joinData = JSON.parse(joinRequest);
+                    if (joinData.playerName && joinData.timestamp > Date.now() - 5000) {
+                        console.log(`Adding player via polling: ${joinData.playerName}`);
+                        this.addPlayer(joinData.playerName);
+                        localStorage.removeItem('pointshoot_join');
+                    }
+                }
+            } catch (e) {
+                // Ignore polling errors
+            }
+        }, 2000);
+        
+        // Test button for debugging
+        const testJoinBtn = document.getElementById('test-join');
+        if (testJoinBtn) {
+            testJoinBtn.addEventListener('click', () => {
+                const testName = `Player${this.players.length + 1}`;
+                console.log(`Test adding player: ${testName}`);
+                this.addPlayer(testName);
+            });
+        }
     }
     
     initializeControllerListeners() {
@@ -779,6 +836,8 @@ class PointAndShoutGame {
     
     // Controller methods
     joinGame(playerName, roomCode) {
+        console.log(`Player ${playerName} attempting to join...`);
+        
         // Store player name for later use
         this.currentPlayerName = playerName;
         
@@ -786,30 +845,51 @@ class PointAndShoutGame {
         document.getElementById('player-name-display').textContent = playerName;
         this.showControllerState('controller-waiting');
         
-        // Send join message to host (in real app, this would be WebSocket/WebRTC)
-        // For demo, we'll use localStorage to communicate between tabs
+        // For real cross-device communication, we need a different approach
+        // Since we can't use localStorage across devices, let's use a simple polling system
+        
+        // Method 1: Try localStorage for same-device testing
         try {
-            localStorage.setItem('pointshoot_join', JSON.stringify({
+            const joinData = {
                 playerName: playerName,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                id: this.playerId
+            };
+            
+            localStorage.setItem('pointshoot_join', JSON.stringify(joinData));
+            console.log('Join request sent via localStorage');
+            
+            // Trigger storage event manually for same tab
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: 'pointshoot_join',
+                newValue: JSON.stringify(joinData)
             }));
             
-            // Also try postMessage for different windows
+        } catch (e) {
+            console.log('localStorage failed:', e);
+        }
+        
+        // Method 2: Try postMessage for different windows/tabs
+        try {
             if (window.opener) {
                 window.opener.postMessage({
                     type: 'JOIN_GAME',
-                    playerName: playerName
+                    playerName: playerName,
+                    playerId: this.playerId
                 }, '*');
+                console.log('Join request sent via postMessage');
             }
         } catch (e) {
-            console.log('Could not send join message:', e);
-            // Fallback: add directly if same instance
-            if (this.isHost) {
-                this.addPlayer(playerName);
-            }
+            console.log('postMessage failed:', e);
         }
         
-        // Simulate connection
+        // Method 3: For demo purposes, add to global game instance
+        if (window.game && window.game.isHost) {
+            console.log('Adding player directly to host game');
+            window.game.addPlayer(playerName);
+        }
+        
+        // Show connection feedback
         setTimeout(() => {
             this.showControllerState('controller-active');
             this.setupPointingInterface();

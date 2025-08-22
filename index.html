@@ -6,6 +6,7 @@
     <title>Point & Shout - Party Game</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
 <body>
     <div id="host-screen" class="screen active">
@@ -24,6 +25,9 @@
                         <canvas id="qr-code"></canvas>
                         <p>Scan with your phone or visit:</p>
                         <div class="join-url" id="join-url"></div>
+                        <div style="margin-top: 15px;">
+                            <button id="test-join" class="btn-secondary" style="font-size: 0.8rem; padding: 8px 16px;">Test Add Player</button>
+                        </div>
                     </div>
                 </div>
                 <div class="players-section">
