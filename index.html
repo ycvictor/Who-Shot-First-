@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point & Shout - Party Game</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+    <div id="host-screen" class="screen active">
+        <div class="header">
+            <h1>🎯 Point & Shout</h1>
+            <div class="game-code">
+                Room Code: <span id="room-code">HOTPOT</span>
+            </div>
+        </div>
+        
+        <div class="game-area">
+            <div id="waiting-area" class="game-state active">
+                <div class="join-section">
+                    <h2>🎮 Join the Game!</h2>
+                    <div class="qr-container">
+                        <canvas id="qr-code"></canvas>
+                        <p>Scan with your phone or visit:</p>
+                        <div class="join-url" id="join-url"></div>
+                        <div style="margin-top: 20px;">
+                            <button id="demo-join" class="btn-secondary" style="font-size: 0.9rem;">Add Demo Player (for testing)</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="players-section">
+                    <h3>Players Ready (<span id="player-count">0</span>)</h3>
+                    <div class="players-grid" id="players-list"></div>
+                    <button id="start-game" class="btn-primary" disabled>Start Game</button>
+                </div>
+            </div>
+            
+            <div id="game-active" class="game-state">
+                <div class="round-info">
+                    <div class="round-counter">Round <span id="current-round">1</span></div>
+                    <div class="countdown" id="countdown"></div>
+                </div>
+                <div class="word-display" id="word-display">Get Ready...</div>
+                <div class="players-grid" id="game-players"></div>
+            </div>
+            
+            <div id="results" class="game-state">
+                <div class="results-container">
+                    <h2>🏆 Round Results</h2>
+                    <div id="round-results"></div>
+                    <div class="results-actions">
+                        <button id="next-round" class="btn-primary">Next Round</button>
+                        <button id="end-game" class="btn-secondary">End Game</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="controller-screen" class="screen">
+        <div class="controller-header">
+            <h2>🎮 Controller</h2>
+            <div class="player-name" id="player-name-display"></div>
+        </div>
+        
+        <div id="join-form" class="controller-state active">
+            <input type="text" id="player-name" placeholder="Enter your name" maxlength="12">
+            <input type="text" id="room-code-input" placeholder="Room code" value="HOTPOT">
+            <button id="join-game" class="btn-primary">Join Game</button>
+        </div>
+        
+        <div id="controller-waiting" class="controller-state">
+            <h3>Waiting for game to start...</h3>
+            <div class="status">Connected ✅</div>
+        </div>
+        
+        <div id="controller-active" class="controller-state">
+            <div class="pointing-area" id="pointing-area">
+                <div class="instruction" id="game-instruction">Point to another player when you hear "SHOOT"!</div>
+                <div class="players-to-point" id="players-to-point"></div>
+            </div>
+        </div>
+        
+        <div id="controller-result" class="controller-state">
+            <div class="result-display" id="result-display">
+                <div class="result-icon" id="result-icon">🎯</div>
+                <div class="result-text" id="result-text">Round Result</div>
+                <div class="result-details" id="result-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
